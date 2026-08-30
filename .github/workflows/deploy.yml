@@ -40,7 +40,7 @@ jobs:
         username: ${{ secrets.VM_USER }}
         key: ${{ secrets.VM_SSH_KEY }}
         script: |
-          cd ~/crud-dd-task-mean-app
+          cd ~/mean-devops-assignment
           docker compose down
           docker compose pull
           docker compose up -d --force-recreate
