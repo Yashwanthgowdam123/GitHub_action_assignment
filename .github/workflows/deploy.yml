@@ -40,7 +40,7 @@ jobs:
         username: ${{ secrets.VM_USER }}
         key: ${{ secrets.VM_SSH_KEY }}
         script: |
-          cd /home/ubuntu/mean-devops-assignment
+          cd /home/ubuntu/GitHub_action_assignment
           sudp docker compose down
           sudo docker compose pull
           sudo docker compose up -d --force-recreate
