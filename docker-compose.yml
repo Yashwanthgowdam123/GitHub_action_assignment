@@ -10,7 +10,7 @@ services:
       - app-network
 
   backend:
-    image: karthik3688/mean-backend:latest
+    image: yashdocker2632/backend:v1.0
     container_name: backend
     restart: always
     environment:
@@ -21,7 +21,7 @@ services:
       - app-network
 
   frontend:
-    image: karthik3688/mean-frontend:latest
+    image: yashdocker2632/frontend:v1.0
     container_name: frontend
     restart: always
     depends_on:
