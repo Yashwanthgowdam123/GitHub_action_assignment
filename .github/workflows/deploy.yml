@@ -41,6 +41,6 @@ jobs:
         key: ${{ secrets.VM_SSH_KEY }}
         script: |
           cd /home/ubuntu/mean-devops-assignment
-          docker compose down
-          docker compose pull
-          docker compose up -d --force-recreate
+          sudp docker compose down
+          sudo docker compose pull
+          sudo docker compose up -d --force-recreate
