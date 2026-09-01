@@ -1,554 +1,412 @@
-# 🚀 " MEAN Stack DevOps Deployment"
+# 🚀 MEAN Stack DevOps Deployment
 
-This project demonstrates **end-to-end DevOps implementation** for deploying a full-stack **MEAN (MongoDB, Express, Angular, Node.js)** application using containerization, CI/CD automation, and cloud infrastructure.
+> Production-style deployment of a **MEAN** (MongoDB, Express.js, Angular, Node.js) application using **Docker, Docker Compose, Nginx, GitHub Actions, Docker Hub, and AWS EC2** — with a fully automated CI/CD pipeline.
 
-The deployment uses the following technologies:
-
-* **Docker & Docker Compose** for containerization
-* **Nginx Reverse Proxy** for application routing
-* **AWS EC2 (Ubuntu)** for infrastructure hosting
-* **Docker Hub** as the container image registry.
-* **GitHub Actions** for CI/CD automation
-* **Git** for source control management.
-
-The objective of this project is to build a **production-style deployment workflow** where application updates automatically trigger a **build → container image push → deployment process**.
+<p align="left">
+  <img alt="Stack" src="https://img.shields.io/badge/Stack-MEAN-3C873A">
+  <img alt="CI/CD" src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF">
+  <img alt="Containers" src="https://img.shields.io/badge/Containers-Docker-2496ED">
+  <img alt="Cloud" src="https://img.shields.io/badge/Cloud-AWS%20EC2-FF9900">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-lightgrey">
+</p>
 
 ---
-## Workflow Diagram
+
+## 📑 Table of Contents
+
+1. [Project Overview](#-project-overview)
+2. [Technology Stack](#-technology-stack)
+3. [Architecture](#-architecture)
+4. [Project Structure](#-project-structure)
+5. [Prerequisites](#-prerequisites)
+6. [Infrastructure](#-infrastructure)
+7. [Getting Started](#-getting-started)
+8. [Docker Containerization](#-docker-containerization)
+9. [Pushing Images to Docker Hub](#-pushing-images-to-docker-hub)
+10. [Docker Compose Deployment](#-docker-compose-deployment)
+11. [Nginx Reverse Proxy](#-nginx-reverse-proxy)
+12. [CI/CD Pipeline](#-cicd-pipeline)
+13. [GitHub Secrets Configuration](#-github-secrets-configuration)
+14. [Continuous Deployment Flow](#-continuous-deployment-flow)
+15. [Deployment Verification](#-deployment-verification)
+16. [Useful Docker Commands](#-useful-docker-commands)
+17. [Lightweight Redeployment (No Repo Clone)](#-lightweight-redeployment-no-repo-clone)
+18. [Roadmap](#-roadmap)
+19. [Author](#-author)
+
+---
+
+## 📌 Project Overview
+
+This repository demonstrates an end-to-end **DevOps implementation** for deploying a full-stack **MEAN** application using containerization, CI/CD automation, and cloud infrastructure on AWS.
+
+Every push to the `main` branch triggers an automated pipeline that builds fresh Docker images, publishes them to Docker Hub, connects to the production EC2 instance over SSH, and restarts the running containers — with **zero manual intervention**.
+
+**Highlights**
+
+- 🔁 Fully automated build → push → deploy pipeline via GitHub Actions
+- 🐳 Multi-stage Docker builds for a lean, production-ready frontend image
+- 🌐 Nginx as a single public entry point, reverse-proxying frontend and API traffic
+- ☁️ Reproducible infrastructure on a right-sized AWS EC2 instance
+- 📦 Stateless redeployment — only `docker-compose.yml` and `nginx/default.conf` are needed on the host
+
+---
+
+## ✨ Technology Stack
+
+| Layer                    | Technology            |
+|---------------------------|------------------------|
+| Frontend                  | Angular                |
+| Backend                   | Node.js + Express.js   |
+| Database                  | MongoDB                |
+| Reverse Proxy             | Nginx                  |
+| Container Runtime         | Docker                 |
+| Container Orchestration   | Docker Compose         |
+| Container Registry        | Docker Hub             |
+| CI/CD                     | GitHub Actions         |
+| Source Control            | Git / GitHub           |
+| Cloud Platform             | AWS EC2 (Ubuntu 22.04) |
+
+---
+
+## 🏗 Architecture
 
 ![Workflow Diagram](presentation/WorkflowDiagram.png)
 
-# 📌 Project Overview
+**Request flow:** Client → Nginx (port 80) → Angular static assets *or* proxied `/api` calls → Express backend → MongoDB.
 
-The application consists of multiple components deployed as containers.
-
-| Component         | Technology        | Purpose                        |
-| ----------------- | ----------------- | ------------------------------ |
-| Frontend          | Angular           | User Interface                 |
-| Backend           | Node.js + Express | REST API                       |
-| Database          | MongoDB           | Data persistence               |
-| Reverse Proxy     | Nginx             | Traffic routing                |
-| Container Runtime | Docker            | Containerization               |
-| Orchestration     | Docker Compose    | Multi-container deployment     |
-| CI/CD             | GitHub Actions    | Automated build and deployment |
-| Infrastructure    | AWS EC2           | Cloud hosting                  |
+**Deployment flow:** Developer push → GitHub Actions → Docker Hub → EC2 (pull + restart).
 
 ---
 
-# 📂 Project Structure
+## 📂 Project Structure
 
 ```text
 crud-dd-task-mean-app
 │
-├── backend
-│   ├── app
-│   ├── dockerfile
+├── backend/
+│   ├── app/
+│   ├── Dockerfile
 │   ├── package.json
 │   └── server.js
 │
-├── frontend
+├── frontend/
 │   ├── Dockerfile
 │   ├── angular.json
 │   ├── package.json
-│   └── src
+│   └── src/
 │
-├── nginx
+├── nginx/
 │   └── default.conf
 │
 ├── docker-compose.yml
+│
+├── .github/
+│   └── workflows/
+│       └── docker-build.yml
+│
 └── README.md
 ```
 
 ---
 
-# 🛠️ Implementation Workflow
+## ✅ Prerequisites
 
-This section explains the **complete step-by-step process followed to implement the project**.
+Before you begin, make sure you have:
 
----
-
-# 1️⃣ Downloading the Application Code
-
-The application source code was provided via **Google Drive**.
-
-Steps followed:
-
-1. Downloaded the project archive file
-
-```
-crud-dd-task-mean-app.zip
-```
-
-2. Extracted the ZIP archive locally.
-
-After extraction, the project contained separate folders for:
-
-* frontend
-* backend
-* nginx configuration
-* docker compose file
+- A GitHub account with permission to fork/clone this repository
+- A Docker Hub account
+- An AWS account with permission to launch EC2 instances
+- An SSH key pair for EC2 access
+- Git installed locally
 
 ---
 
-# 2️⃣ Uploading Code to EC2 Server
+## ☁ Infrastructure
 
-The extracted project was uploaded to the cloud server using **SCP (Secure Copy Protocol)**.
+The application is hosted on a single **AWS EC2 Ubuntu instance**.
 
-Example command:
+| Parameter          | Value        |
+|---------------------|--------------|
+| Instance Type        | t3.medium    |
+| vCPU                 | 2            |
+| Memory                | 4 GB         |
+| Storage               | 20 GB EBS    |
+| Operating System       | Ubuntu 22.04 |
+
+**Why `t3.medium`?**
+It provides sufficient headroom to run Docker Engine, Docker Compose, MongoDB, the Angular frontend, the Node.js backend, and Nginx concurrently without resource contention.
+
+**Security Group — required inbound rules**
+
+| Port | Purpose |
+|------|---------|
+| 22   | SSH     |
+| 80   | HTTP    |
+
+---
+
+## 🚀 Getting Started
+
+### 1. Launch the AWS EC2 instance
+
+Provision an Ubuntu 22.04 instance (`t3.medium`, 20 GB EBS) with the security group rules above.
+
+### 2. Connect to the instance
 
 ```bash
-scp -i mykey.pem -r crud-dd-task-mean-app ubuntu@<EC2-IP>:/home/ubuntu/
+ssh -i mykey.pem ubuntu@<EC2-Public-IP>
 ```
-
-This copied the project files into the EC2 instance.
-
----
-
-# ☁️ Cloud Infrastructure
-
-The application is deployed on **AWS EC2**.
-
-### Instance Configuration
-
-| Parameter     | Value        |
-| ------------- | ------------ |
-| Instance Type | t3.medium    |
-| vCPU          | 2            |
-| RAM           | 4 GB         |
-| Storage       | 20GB EBS     |
-| OS            | Ubuntu 22.04 |
-
-### Why t3.medium?
-
-The t3.medium instance was chosen because the deployment requires:
-
-* Docker runtime
-* Multiple container images
-* MongoDB storage
-* CI/CD deployment artifacts
-
-The **20GB storage** allows space for Docker images and persistent MongoDB data.
-
----
-
-# 3️⃣ Preparing the Server Environment
-
-Connected to EC2 via SSH:
+### 3. Fork and clone the repository
 
 ```bash
-ssh -i mykey.pem ubuntu@<EC2-IP>
+git clone https://github.com/<your-github-username>/<repository-name>.git
+cd <repository-name>
 ```
 
-Installed Docker:
+### 4. Update the server and install Docker
 
 ```bash
-sudo apt update
+sudo apt update && sudo apt upgrade -y
+
 sudo apt install docker.io -y
-```
-
-Enabled Docker service:
-
-```bash
-sudo systemctl start docker
 sudo systemctl enable docker
-```
-
-Verify Docker installation:
-
-```bash
+sudo systemctl start docker
 docker --version
 ```
 
-Installed Docker Compose:
+### 5. Install Docker Compose
 
 ```bash
 sudo apt install docker-compose -y
+docker compose version
+```
+
+### 6. Configure Git (local machine)
+
+```bash
+git config --global user.name "<your-name>"
+git config --global user.email "<your-email>"
 ```
 
 ---
 
-# 🔁 Git Workflow
+## 🐳 Docker Containerization
 
-Git was used for **version control and code management**.
+The application is split into independently built and deployed images:
 
-### Configure Git
+| Image     | Purpose              |
+|------------|-----------------------|
+| Backend    | Express REST API      |
+| Frontend   | Angular application    |
+| MongoDB    | Database (official image) |
+| Nginx      | Reverse proxy          |
 
-```bash
-git config --global user.name "Karthik R"
-git config --global user.email "your-email@example.com"
-```
-
-Initialize repository:
-
-```bash
-git init
-```
-
-Add remote GitHub repository:
+### Backend image
 
 ```bash
-git remote add origin <github-repo-url>
+docker build -t <dockerhub-username>/backend:v1.0 ./backend
 ```
+
+Installs Node.js dependencies, starts the Express server, and exposes the backend port.
+
+### Frontend image (multi-stage build)
+
+```bash
+docker build -t <dockerhub-username>/frontend:v1.0 ./frontend
+```
+
+| Stage | Responsibility |
+|-------|-----------------|
+| 1 — Build   | Compile the Angular application |
+| 2 — Serve   | Serve the compiled static assets via Nginx |
+
+A multi-stage build keeps the final image small by excluding Node.js build tooling from the runtime layer.
 
 ---
 
-### Push Code to GitHub
-
-Add files:
-
-```bash
-git add .
-```
-
-Commit changes:
-
-```bash
-git commit -m "Initial commit of MEAN stack project"
-```
-
-Push to GitHub:
-
-```bash
-git push origin main
-```
-
-At this stage the **GitHub repository connection was successfully established**.
-
----
-
-# 🐳 Docker Containerization
-
-The application was containerized using **Docker**.
-
-Separate Docker images were created for:
-
-* Backend API
-* Angular Frontend
-* MongoDB database
-
----
-
-# Backend Docker Image
-
-Build backend image:
-
-```bash
-docker build -t <dockerhub-username>/mean-backend ./backend
-```
-
-Purpose:
-
-* Install Node.js dependencies
-* Run Express API server
-* Expose backend port
-
----
-
-# Frontend Docker Image
-
-Build frontend image:
-
-```bash
-docker build -t <dockerhub-username>/mean-frontend ./frontend
-```
-
-Uses **multi-stage Docker build**.
-
-Stage 1
-Build Angular application.
-
-Stage 2
-Serve compiled static files using Nginx.
-
----
-
-# 📦 Docker Hub Registry
-
-Docker images were pushed to Docker Hub.
-
-Login:
+## 📦 Pushing Images to Docker Hub
 
 ```bash
 docker login
-```
 
-Push images:
-
-```bash
-docker push <dockerhub-username>/mean-backend
-docker push <dockerhub-username>/mean-frontend
+docker push <dockerhub-username>/backend:v1.0
+docker push <dockerhub-username>/frontend:v1.0
 ```
 
 ---
 
-# 🐳 Docker Compose Deployment
+## 🐳 Docker Compose Deployment
 
-Docker Compose was used to deploy all containers together.
+All services are orchestrated together via Docker Compose:
 
-Services included:
+| Service   | Description     |
+|------------|-------------------|
+| MongoDB    | Database           |
+| Backend    | Express API         |
+| Frontend   | Angular UI (served via Nginx) |
+| Nginx      | Reverse proxy / public entry point |
 
-| Service  | Purpose             |
-| -------- | ------------------- |
-| mongodb  | Database container  |
-| backend  | Node.js API         |
-| frontend | Angular application |
-| nginx    | Reverse proxy       |
-
-Run deployment:
+**Deploy:**
 
 ```bash
 docker compose up -d
 ```
 
-Verify containers:
+**Verify running containers:**
 
 ```bash
 docker ps
 ```
 
-Expected output:
+Expected containers: `mongodb`, `backend`, `frontend`, `nginx`.
 
-```
-mongo
-backend
-frontend
-nginx
+---
+
+## 🌐 Nginx Reverse Proxy
+
+Nginx is the single public entry point for the application.
+
+- Config file: `nginx/default.conf`
+- Serves the compiled Angular application
+- Routes `/api` requests to the backend service
+- Listens on port `80`
+
+**Application URL:**
+
+```text
+http://<EC2-PUBLIC-IP>
 ```
 
 ---
 
-# 🌐 Nginx Reverse Proxy
+## ⚙ CI/CD Pipeline
 
-Nginx acts as the **entry point to the application**.
+Workflow file: `.github/workflows/docker-build.yml`
 
-Configuration file:
-
-```
-nginx/default.conf
-```
-
-Responsibilities:
-
-* Serve Angular frontend
-* Route API calls to backend
-* Expose application via port 80
-
-Application URL:
-
-```
-http://<EC2-IP>
+```text
+Developer
+   │
+   ▼
+Git Push (main)
+   │
+   ▼
+GitHub Actions
+   │
+   ├── Checkout repository
+   ├── Build Docker images (backend + frontend)
+   ├── Log in to Docker Hub
+   ├── Push images to Docker Hub
+   ├── SSH into EC2
+   ├── Pull latest images
+   └── Restart containers (docker compose up -d)
 ```
 
 ---
 
-# 🔐 GitHub Secrets Configuration
+## 🔐 GitHub Secrets Configuration
 
-To enable secure CI/CD deployment, GitHub Secrets were configured.
+Navigate to **Repository → Settings → Secrets and variables → Actions**, and add:
 
-Navigate to:
+| Secret             | Description             |
+|---------------------|---------------------------|
+| `DOCKER_USERNAME`   | Docker Hub username        |
+| `DOCKER_PASSWORD`   | Docker Hub password / access token |
+| `VM_HOST`            | EC2 public IP              |
+| `VM_USER`            | SSH username (e.g. `ubuntu`) |
+| `VM_SSH_KEY`         | Private SSH key for EC2 access |
 
-```
-Repository → Settings → Secrets and Variables → Actions
-```
-
-### Configured Secrets
-
-| Secret Name     | Purpose             |
-| --------------- | ------------------- |
-| DOCKER_USERNAME | Docker Hub username |
-| DOCKER_PASSWORD | Docker Hub password |
-| VM_HOST         | EC2 public IP       |
-| VM_USER         | EC2 SSH username    |
-| VM_SSH_KEY      | SSH private key     |
-
-These secrets allow the CI/CD pipeline to:
-
-* Authenticate with Docker Hub
-* Connect securely to EC2
-* Deploy updated containers automatically
+> 🔒 Use a Docker Hub **access token** instead of your raw password wherever possible.
 
 ---
 
-# ⚙️ CI/CD Pipeline (GitHub Actions)
+## 🔄 Continuous Deployment Flow
 
-The CI/CD pipeline was implemented using **GitHub Actions**.
-
-Workflow location:
-
-```
-.github/workflows/docker-build.yml
-```
-
-Pipeline steps:
-
-1️⃣ Checkout repository
-2️⃣ Login to Docker Hub
-3️⃣ Build Docker images
-4️⃣ Push images to Docker Hub
-5️⃣ SSH into EC2 server
-6️⃣ Pull latest images
-7️⃣ Restart containers
-
----
-
-# 🔄 Continuous Deployment
-
-Whenever code changes are pushed:
+Every push to `main` triggers a full redeploy — no manual steps required:
 
 ```bash
 git add .
-git commit -m "updated application"
+git commit -m "Application update"
 git push origin main
 ```
 
 GitHub Actions automatically:
 
-* builds new Docker images
-* pushes them to Docker Hub
-* connects to EC2
-* pulls latest images
-* restarts containers
-
-The application gets **updated automatically without manual deployment**.
+1. Builds fresh Docker images
+2. Pushes them to Docker Hub
+3. Connects to EC2 over SSH
+4. Pulls the latest images
+5. Restarts the Docker containers
 
 ---
 
-# 📊 AWS Infrastructure Diagram
+## 📊 Deployment Verification
 
+Open the application in a browser:
+
+```text
+http://<EC2-PUBLIC-IP>
 ```
-             Internet Users
-                    │
-                    ▼
-            AWS Security Group
-           (Allow 22 and 80 ports)
-                    │
-                    ▼
-             AWS EC2 Instance
-            (Ubuntu t3.medium)
-                 20GB EBS
-                    │
-                    ▼
-              Docker Engine
-                    │
-     ┌──────────────┼──────────────┐
-     ▼              ▼              ▼
- Nginx Container Frontend Container Backend Container
-      │                                   │
-      └───────────────► MongoDB Container
-```
+
+**Expected result:**
+
+- ✅ Angular application loads
+- ✅ Backend API is reachable
+- ✅ MongoDB persists application data
 
 ---
 
-# 🔄 CI/CD Pipeline Diagram
-
-```
-Developer
-   │
-   ▼
-Local Code Changes
-   │
-   ▼
-git add / commit / push
-   │
-   ▼
-GitHub Repository
-   │
-   ▼
-GitHub Actions Pipeline
-   │
-   ├─ Build Docker Images
-   ├─ Push Images to Docker Hub
-   └─ SSH into EC2
-          │
-          ▼
-   Pull Latest Images
-          │
-          ▼
-   Restart Containers
-          │
-          ▼
-Updated Application Running
-```
-
----
-
-# 🐳 Docker Container Architecture
-
-```
-          User Browser
-               │
-               ▼
-        Nginx Reverse Proxy
-               │
-     ┌─────────┴─────────┐
-     ▼                   ▼
-Angular Frontend      Node.js Backend
-    Container           Container
-                              │
-                              ▼
-                        MongoDB Database
-                           Container
-```
-
----
-
-# 🧪 Deployment Verification
-
-Open browser:
-```
-http://<EC2-IP>
-```
-
-Expected behavior:
-
-* Angular UI loads
-* Backend API responds
-* MongoDB stores data
-
----
-
-# 📊 Useful Debug Commands
-
-Check containers:
+## 🧪 Useful Docker Commands
 
 ```bash
+# Check running containers
 docker ps
-```
 
-View logs:
-
-```bash
+# View logs
 docker logs backend
+docker logs frontend
 docker logs nginx
-```
 
-Restart containers:
-
-```bash
+# Restart the application
 docker compose up -d
-```
 
-Stop containers:
-
-```bash
+# Stop the application
 docker compose down
+
+# List local images
+docker images
 ```
 
 ---
 
-# 📈 Future Improvements
+## 📝 Lightweight Redeployment (No Repo Clone)
 
-Potential improvements include:
+If the Docker images already exist on **Docker Hub**, there is no need to clone the full repository onto the host VM. Only two files are required:
 
-* Kubernetes deployment
-* HTTPS with SSL certificates
-* Domain integration
-* Monitoring using Prometheus and Grafana
-* Infrastructure as Code using Terraform
+```text
+/home/ubuntu/<repository-name>/
+│
+├── docker-compose.yml
+└── nginx/
+    └── default.conf
+```
+
+| File                    | Purpose |
+|--------------------------|---------|
+| `docker-compose.yml`     | Defines all application services and container configuration |
+| `nginx/default.conf`      | Mounted into the Nginx container as a bind volume; drives reverse-proxy behavior |
 
 ---
 
-# 👨‍💻 Author
+## 🚀 Roadmap
 
-Karthik R
-DevOps Engineer
+- [ ] Kubernetes deployment
+- [ ] HTTPS via Let's Encrypt SSL
+- [ ] Custom domain integration
+- [ ] Monitoring with Prometheus & Grafana
+- [ ] Centralized logging with the ELK stack
+- [ ] Infrastructure as Code with Terraform
+- [ ] Automated backup and restore
+- [ ] Blue-green deployment strategy
+
+⭐ If you found this project useful, consider giving the repository a **star**.
