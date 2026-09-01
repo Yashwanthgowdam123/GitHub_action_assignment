@@ -14,6 +14,9 @@ The deployment uses the following technologies:
 The objective of this project is to build a **production-style deployment workflow** where application updates automatically trigger a **build → container image push → deployment process**.
 
 ---
+## Workflow Diagram
+
+![Workflow Diagram](presentation/WorkflowDiagram.png)
 
 # 📌 Project Overview
 
