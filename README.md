@@ -9,7 +9,6 @@
   <img alt="Cloud" src="https://img.shields.io/badge/Cloud-AWS%20EC2-FF9900">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-lightgrey">
 </p>
-
 ---
 
 ## 📑 Table of Contents
