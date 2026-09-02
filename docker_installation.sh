@@ -1,14 +1,37 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
 echo "========================================="
-echo " Docker Installation Started"
+echo " Docker Installation Script"
 echo "========================================="
 
-echo "[1/8] Removing old Docker packages..."
+#########################################
+# Check Docker
+#########################################
+
+if command -v docker >/dev/null 2>&1; then
+    echo "Docker is already installed."
+
+    docker --version
+    docker compose version
+
+    sudo systemctl enable docker
+    sudo systemctl start docker
+
+    echo "Skipping installation."
+    exit 0
+fi
+
+#########################################
+# Remove Old Docker Packages
+#########################################
+
+echo
+echo "[1/9] Removing old Docker packages..."
+
 sudo apt-get remove -y \
     docker.io \
     docker-doc \
@@ -19,26 +42,60 @@ sudo apt-get remove -y \
     containerd \
     runc || true
 
-echo "[2/8] Updating package index..."
+#########################################
+# Clean Previous Repository
+#########################################
+
+echo
+echo "[2/9] Cleaning old Docker repositories..."
+
+sudo rm -f /etc/apt/sources.list.d/docker.list
+sudo rm -f /etc/apt/sources.list.d/docker.sources
+
+sudo rm -f /etc/apt/keyrings/docker.asc
+sudo rm -f /etc/apt/keyrings/docker.gpg
+
+#########################################
+# Update Packages
+#########################################
+
+echo
+echo "[3/9] Updating package index..."
+
 sudo apt-get update -y
 
-echo "[3/8] Installing required packages..."
+#########################################
+# Install Prerequisites
+#########################################
+
+echo
+echo "[4/9] Installing prerequisites..."
+
 sudo apt-get install -y \
     ca-certificates \
     curl \
-    gnupg \
-    lsb-release
+    gnupg
 
-echo "[4/8] Creating keyrings directory..."
+#########################################
+# Create Keyring Directory
+#########################################
+
+echo
+echo "[5/9] Creating Docker keyring..."
+
 sudo install -m 0755 -d /etc/apt/keyrings
 
-echo "[5/8] Downloading Docker GPG key..."
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
 | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-echo "[6/8] Adding Docker Repository..."
+#########################################
+# Add Docker Repository
+#########################################
+
+echo
+echo "[6/9] Adding Docker repository..."
 
 echo \
 "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
@@ -46,10 +103,22 @@ https://download.docker.com/linux/ubuntu \
 $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
 | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
 
-echo "[7/8] Updating package index..."
+#########################################
+# Update Repository
+#########################################
+
+echo
+echo "[7/9] Updating package index..."
+
 sudo apt-get update -y
 
-echo "[8/8] Installing Docker Engine..."
+#########################################
+# Install Docker
+#########################################
+
+echo
+echo "[8/9] Installing Docker Engine..."
+
 sudo apt-get install -y \
     docker-ce \
     docker-ce-cli \
@@ -57,22 +126,37 @@ sudo apt-get install -y \
     docker-buildx-plugin \
     docker-compose-plugin
 
-echo "Enabling Docker Service..."
-sudo systemctl enable docker
+#########################################
+# Start Docker
+#########################################
 
-echo "Starting Docker Service..."
+echo
+echo "[9/9] Starting Docker..."
+
+sudo systemctl enable docker
 sudo systemctl restart docker
 
-echo "Waiting for Docker..."
 sleep 5
 
-echo "Verifying Installation..."
+#########################################
+# Verification
+#########################################
+
+echo
+echo "========================================="
+echo " Docker Installed Successfully"
+echo "========================================="
+
+echo
 
 docker --version
 docker compose version
 
-sudo systemctl is-active --quiet docker
+echo
 
+sudo systemctl --no-pager --full status docker
+
+echo
 echo "========================================="
-echo " Docker Installed Successfully"
+echo " Installation Completed Successfully"
 echo "========================================="

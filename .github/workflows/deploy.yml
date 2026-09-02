@@ -31,7 +31,6 @@ jobs:
 
       - name: Push Frontend Image
         run: docker push ${{ secrets.DOCKER_USERNAME }}/frontend:v1.0
-
       # 🔥 Deploy to VM via SSH
       - name: Deploy to VM via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -43,21 +42,25 @@ jobs:
             PROJECT_DIR="/home/ubuntu/GitHub_action_assignment"
             REPO_URL="https://github.com/Yashwanthgowdam123/GitHub_action_assignment.git"
 
-            if [ -d "$PROJECT_DIR" ]; then
-              echo "Project already exists. Skipping clone and Docker installation."
-            else
+            # Clone repository only if it doesn't exist
+            if [ ! -d "$PROJECT_DIR" ]; then
               echo "Project not found. Cloning repository..."
               git clone "$REPO_URL" "$PROJECT_DIR"
-
-              cd "$PROJECT_DIR"
-
-              chmod +x docker_installation.sh
-              sudo sh ./docker_installation.sh
-              sleep 20
+            else
+              echo "Project already exists."
             fi
 
             cd "$PROJECT_DIR"
 
-            sudo docker compose down
+            # Install Docker only if it's not installed
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Docker not found. Installing..."
+              chmod +x docker_installation.sh
+              sudo ./docker_installation.sh
+            else
+              echo "Docker already installed."
+            fi
+
+            sudo docker compose down || true
             sudo docker compose pull
             sudo docker compose up -d --force-recreate
