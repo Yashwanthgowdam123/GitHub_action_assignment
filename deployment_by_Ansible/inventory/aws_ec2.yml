@@ -17,8 +17,3 @@ keyed_groups:
   - key: tags.Application
     prefix: "app"
 
-  - key: tags.Environment
-    prefix: "env"
-
-  - key: tags.Application + '_' + tags.Environment
-    prefix: "env-app"
