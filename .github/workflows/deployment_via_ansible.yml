@@ -2,8 +2,6 @@ name: CI-CD Pipeline via Ansible
 
 on:
   push:
-    branches:
-
   workflow_dispatch:
 
 jobs:
