@@ -1,0 +1,92 @@
+---
+# deploy.yml
+# Usage:
+#
+# and then run with -e "host=web" or -e "host=ec2-target"
+
+- name: Deploy application on target EC2 via Docker Compose
+  hosts: "{{ host }}"
+  become: false
+  gather_facts: true
+
+  vars:
+    project_dir: "/home/ubuntu/GitHub_action_assignment"
+    repo_url: "https://github.com/Yashwanthgowdam123/GitHub_action_assignment.git"
+
+  tasks:
+
+    - name: Check if project directory already exists
+      ansible.builtin.stat:
+        path: "{{ project_dir }}"
+      register: project_dir_stat
+
+    - name: Clone repository if project directory does not exist
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ project_dir }}"
+      when: not project_dir_stat.stat.exists
+
+    - name: Confirm project already exists (informational)
+      ansible.builtin.debug:
+        msg: "Project already exists at {{ project_dir }}"
+      when: project_dir_stat.stat.exists
+
+    - name: Check if docker is already installed
+      ansible.builtin.command: command -v docker
+      register: docker_check
+      changed_when: false
+      failed_when: false
+
+    - name: Ensure docker_installation.sh is executable
+      ansible.builtin.file:
+        path: "{{ project_dir }}/docker_installation.sh"
+        mode: '0755'
+      when: docker_check.rc != 0
+
+    - name: Install Docker using docker_installation.sh
+      ansible.builtin.command: ./docker_installation.sh
+      args:
+        chdir: "{{ project_dir }}"
+      become: true
+      when: docker_check.rc != 0
+      register: docker_install_result
+
+    - name: Show Docker install result
+      ansible.builtin.debug:
+        msg: "Docker installed successfully."
+      when: docker_check.rc != 0 and docker_install_result is succeeded
+
+    - name: Confirm Docker already installed (informational)
+      ansible.builtin.debug:
+        msg: "Docker already installed."
+      when: docker_check.rc == 0
+
+    - name: Bring down existing docker compose stack (ignore failures)
+      ansible.builtin.command: docker compose down
+      args:
+        chdir: "{{ project_dir }}"
+      become: true
+      register: compose_down
+      failed_when: false
+      changed_when: compose_down.rc == 0
+
+    - name: Pull latest docker compose images
+      ansible.builtin.command: docker compose pull
+      args:
+        chdir: "{{ project_dir }}"
+      become: true
+      register: compose_pull
+      changed_when: "'Pulled' in compose_pull.stdout or 'Downloaded' in compose_pull.stdout"
+
+    - name: Bring up docker compose stack (force recreate)
+      ansible.builtin.command: docker compose up -d --force-recreate
+      args:
+        chdir: "{{ project_dir }}"
+      become: true
+      register: compose_up
+      changed_when: true
+
+    - name: Show compose up output
+      ansible.builtin.debug:
+        var: compose_up.stdout_lines
+
