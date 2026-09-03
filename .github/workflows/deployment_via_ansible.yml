@@ -1,0 +1,44 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches:
+
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 🔥 Build WITHOUT cache (forces Angular rebuild)
+      - name: Build Backend Image
+        run: docker build --no-cache -t ${{ secrets.DOCKER_USERNAME }}/backend:v1.0 ./backend
+
+      - name: Build Frontend Image
+        run: docker build --no-cache -t ${{ secrets.DOCKER_USERNAME }}/frontend:v1.0 ./frontend
+
+      - name: Push Backend Image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/backend:v1.0
+
+      - name: Push Frontend Image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/frontend:v1.0
+        
+      # 🔥 Deploy to VM via SSH
+      - name: Deploy to VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.Ansible_VM }}
+          username: ${{ secrets.Ansible_VM_USER }}
+          key: ${{ secrets.Ansible_VM_SSH_KEY }}
+          script: |
+            ansible-playbook /opt/ansible/github_actions/docker_deployment.yml -e "host=app_GitHub" -i /opt/ansible/github_actions/inventory
